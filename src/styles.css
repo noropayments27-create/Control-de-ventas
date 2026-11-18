@@ -472,12 +472,41 @@ input[type="date"] {
   text-align: center;
 }
 
-.resumen {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 8px;
-  align-items: center;
+.total-bar.in-pad {
+  margin: 2px 0 0;
+}
+
+.desglose {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
   padding: 8px;
+}
+
+.desglose-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--color-orange-deep);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.desglose-title svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
+.resumen-lines .cell {
+  height: 26px;
+  border-radius: 8px;
+  background: var(--color-white);
+  font-size: 12px;
 }
 
 .icon-badge {

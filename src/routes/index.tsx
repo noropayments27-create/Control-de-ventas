@@ -56,6 +56,7 @@ type Sheet = {
   pollo: Flavor;
   carne: Flavor;
   bold: string[];
+  consumo: string;
   notas: string;
 };
 
@@ -119,9 +120,12 @@ function Home() {
 
   const pollo = flavorMath(sheet.pollo);
   const carne = flavorMath(sheet.carne);
-  const resumenListo =
-    !((pollo.hechas > 0 && !pollo.closed) || (carne.hechas > 0 && !carne.closed)) &&
-    (pollo.closed || carne.closed);
+  const productos = productsTotal(sheet.products);
+  const empanadasListas = flavorReady(pollo) && flavorReady(carne);
+  const empanadasMonto = (pollo.monto ?? 0) + (carne.monto ?? 0);
+  const boldTotal = sheet.bold.reduce((sum, value) => sum + toInt(value), 0);
+  const venta = productos.amount + empanadasMonto;
+  const efectivo = venta - boldTotal - toInt(sheet.consumo);
   const minDate = today ? (sheet.fecha && sheet.fecha < today ? sheet.fecha : today) : undefined;
 
   function patchProduct(index: number, key: keyof ProductRow, value: string) {
@@ -300,98 +304,101 @@ function Home() {
               );
             })}
           </div>
+          <div className="total-bar">
+            <span>TOTAL PRODUCTOS</span>
+            <strong>{money(productos.amount)}</strong>
+          </div>
         </section>
 
         <div className="split">
           <section className="card" aria-label="Empanadas">
-              <h2 className="section-head">
-                <Croissant strokeWidth={2.4} aria-hidden="true" /> Empanada
-                <em className="price-pill">$3.000</em>
-              </h2>
-              <div className="subhead">
-                <span>Pollo</span>
-                <span>Carne</span>
-              </div>
-              <div className="pad">
-                <p className="caption">HECHAS</p>
-                {Array.from({ length: HECHA_ROWS }, (_, row) => (
-                  <div className="pair" key={row}>
-                    <DigitsInput
-                      label={`Pollo hechas ${row + 1}`}
-                      value={sheet.pollo.hechas[row] ?? ""}
-                      max={4}
-                      onChange={(value) =>
-                        setSheet((prev) => ({
-                          ...prev,
-                          pollo: {
-                            ...prev.pollo,
-                            hechas: prev.pollo.hechas.map((item, i) => (i === row ? value : item)),
-                          },
-                        }))
-                      }
-                    />
-                    <DigitsInput
-                      label={`Carne hechas ${row + 1}`}
-                      value={sheet.carne.hechas[row] ?? ""}
-                      max={4}
-                      onChange={(value) =>
-                        setSheet((prev) => ({
-                          ...prev,
-                          carne: {
-                            ...prev.carne,
-                            hechas: prev.carne.hechas.map((item, i) => (i === row ? value : item)),
-                          },
-                        }))
-                      }
-                    />
-                  </div>
-                ))}
-                <div className="pair">
-                  <div className="sum-mini" aria-label={`Total hechas de pollo ${pollo.hechas}`}>
-                    <small>TOTAL</small>
-                    {pollo.hechas}
-                  </div>
-                  <div className="sum-mini" aria-label={`Total hechas de carne ${carne.hechas}`}>
-                    <small>TOTAL</small>
-                    {carne.hechas}
-                  </div>
-                </div>
-                <p className="caption">SIN VENDER</p>
-                <div className="pair">
+            <h2 className="section-head">
+              <Croissant strokeWidth={2.4} aria-hidden="true" /> Empanada
+            </h2>
+            <div className="subhead">
+              <span>Pollo</span>
+              <span>Carne</span>
+            </div>
+            <div className="pad">
+              <p className="caption">HECHAS</p>
+              {Array.from({ length: HECHA_ROWS }, (_, row) => (
+                <div className="pair" key={row}>
                   <DigitsInput
-                    className={pollo.over ? "cell warn" : "cell"}
-                    label="Pollo sin vender"
-                    value={sheet.pollo.quedaron}
+                    label={`Pollo hechas ${row + 1}`}
+                    value={sheet.pollo.hechas[row] ?? ""}
                     max={4}
-                    onChange={(quedaron) =>
-                      setSheet((prev) => ({ ...prev, pollo: { ...prev.pollo, quedaron } }))
+                    onChange={(value) =>
+                      setSheet((prev) => ({
+                        ...prev,
+                        pollo: {
+                          ...prev.pollo,
+                          hechas: prev.pollo.hechas.map((item, i) => (i === row ? value : item)),
+                        },
+                      }))
                     }
                   />
                   <DigitsInput
-                    className={carne.over ? "cell warn" : "cell"}
-                    label="Carne sin vender"
-                    value={sheet.carne.quedaron}
+                    label={`Carne hechas ${row + 1}`}
+                    value={sheet.carne.hechas[row] ?? ""}
                     max={4}
-                    onChange={(quedaron) =>
-                      setSheet((prev) => ({ ...prev, carne: { ...prev.carne, quedaron } }))
+                    onChange={(value) =>
+                      setSheet((prev) => ({
+                        ...prev,
+                        carne: {
+                          ...prev.carne,
+                          hechas: prev.carne.hechas.map((item, i) => (i === row ? value : item)),
+                        },
+                      }))
                     }
                   />
                 </div>
-                {(pollo.over || carne.over) && (
-                  <p className="warn-note">Quedaron más de las hechas. Revisa el número.</p>
-                )}
-                <div className="pair">
-                  <Stat label="Total vendido" value={showCount(pollo.sold)} warn={pollo.over} />
-                  <Stat label="Total vendido" value={showCount(carne.sold)} warn={carne.over} />
+              ))}
+              <div className="pair">
+                <div className="sum-mini" aria-label={`Total hechas de pollo ${pollo.hechas}`}>
+                  <small>TOTAL</small>
+                  {pollo.hechas}
                 </div>
-                <div className="pair">
-                  <Stat label="Monto total" value={showMoney(pollo.monto)} />
-                  <Stat label="Monto total" value={showMoney(carne.monto)} />
+                <div className="sum-mini" aria-label={`Total hechas de carne ${carne.hechas}`}>
+                  <small>TOTAL</small>
+                  {carne.hechas}
                 </div>
               </div>
-            </section>
+              <p className="caption">SIN VENDER</p>
+              <div className="pair">
+                <DigitsInput
+                  className={pollo.over ? "cell warn" : "cell"}
+                  label="Pollo sin vender"
+                  value={sheet.pollo.quedaron}
+                  max={4}
+                  onChange={(quedaron) =>
+                    setSheet((prev) => ({ ...prev, pollo: { ...prev.pollo, quedaron } }))
+                  }
+                />
+                <DigitsInput
+                  className={carne.over ? "cell warn" : "cell"}
+                  label="Carne sin vender"
+                  value={sheet.carne.quedaron}
+                  max={4}
+                  onChange={(quedaron) =>
+                    setSheet((prev) => ({ ...prev, carne: { ...prev.carne, quedaron } }))
+                  }
+                />
+              </div>
+              {(pollo.over || carne.over) && (
+                <p className="warn-note">Quedaron más de las hechas. Revisa el número.</p>
+              )}
+              <div className="pair">
+                <Stat label="Total vendido" value={showCount(pollo.sold)} warn={pollo.over} />
+                <Stat label="Total vendido" value={showCount(carne.sold)} warn={carne.over} />
+              </div>
+              <div className="total-bar in-pad">
+                <span>MONTO TOTAL</span>
+                <strong>{empanadasListas ? money(empanadasMonto) : "—"}</strong>
+              </div>
+            </div>
+          </section>
 
-            <section className="card pago" aria-label="Forma de pago Bold">
+          <section className="card pago" aria-label="Forma de pago Bold">
             <h2 className="section-head">
               <CreditCard strokeWidth={2.4} aria-hidden="true" /> Forma de pago
             </h2>
@@ -424,38 +431,48 @@ function Home() {
             </div>
             <div className="total-bar">
               <span>TOTAL BOLD</span>
-              <strong>{money(sheet.bold.reduce((sum, value) => sum + toInt(value), 0))}</strong>
+              <strong>{money(boldTotal)}</strong>
             </div>
           </section>
         </div>
 
-        <section className="card resumen" aria-label="Resumen de empanadas">
-          <span className="icon-badge">
-            <Calculator strokeWidth={2.4} aria-hidden="true" />
-          </span>
-          <div className="resumen-lines">
-            <label>
-              Hechas
-              <input className="field lock" readOnly tabIndex={-1} value={String(pollo.hechas + carne.hechas)} />
-            </label>
-            <label>
-              Vendidas
-              <input
-                className="field lock"
-                readOnly
-                tabIndex={-1}
-                value={resumenListo ? String((pollo.sold ?? 0) + (carne.sold ?? 0)) : "—"}
-              />
-            </label>
-            <label>
-              Monto
-              <input
-                className="field lock"
-                readOnly
-                tabIndex={-1}
-                value={resumenListo ? money((pollo.monto ?? 0) + (carne.monto ?? 0)) : "—"}
-              />
-            </label>
+        <section className="card resumen" aria-label="Desglose">
+          <div className="desglose">
+            <h2 className="desglose-title">
+              <Calculator strokeWidth={2.4} aria-hidden="true" /> Desglose
+            </h2>
+            <div className="resumen-lines">
+              <label>
+                Consumo
+                <DigitsInput
+                  label="Consumo en pesos"
+                  value={sheet.consumo}
+                  max={8}
+                  className="cell"
+                  onChange={(consumo) => setSheet((prev) => ({ ...prev, consumo }))}
+                />
+              </label>
+              <label>
+                Venta
+                <input
+                  className="field lock"
+                  readOnly
+                  tabIndex={-1}
+                  value={empanadasListas ? money(venta) : "—"}
+                  aria-label="Venta"
+                />
+              </label>
+              <label>
+                Total efectivo
+                <input
+                  className="field lock"
+                  readOnly
+                  tabIndex={-1}
+                  value={empanadasListas ? money(efectivo) : "—"}
+                  aria-label="Total efectivo"
+                />
+              </label>
+            </div>
           </div>
         </section>
 
@@ -576,6 +593,7 @@ function blankSheet(): Sheet {
     pollo: emptyFlavor(),
     carne: emptyFlavor(),
     bold: Array.from({ length: BOLD_N }, () => ""),
+    consumo: "",
     notas: "",
   };
 }
@@ -588,7 +606,10 @@ function todayISO(date = new Date()): string {
 }
 
 function digits(raw: string, max: number): string {
-  return raw.replace(/\D/g, "").replace(/^0+(?=\d)/, "").slice(0, max);
+  return raw
+    .replace(/\D/g, "")
+    .replace(/^0+(?=\d)/, "")
+    .slice(0, max);
 }
 
 function asDigits(value: unknown, max: number): string {
@@ -635,12 +656,21 @@ function flavorMath(flavor: Flavor): FlavorMath {
   return { hechas, closed, over, sold, monto: sold * PRICE };
 }
 
-function showCount(value: number | null): string {
-  return value === null ? "—" : String(value);
+function productsTotal(rows: ProductRow[]) {
+  let amount = 0;
+  for (let index = 0; index < PRODUCTS.length; index += 1) {
+    const math = productMath(rows[index] ?? emptyProduct(), PRODUCTS[index].price);
+    if (math.amount !== null) amount += math.amount;
+  }
+  return { amount };
 }
 
-function showMoney(value: number | null): string {
-  return value === null ? "—" : money(value);
+function flavorReady(flavor: FlavorMath): boolean {
+  return flavor.hechas === 0 || flavor.closed;
+}
+
+function showCount(value: number | null): string {
+  return value === null ? "—" : String(value);
 }
 
 function coerceFlavor(value: unknown): Flavor {
@@ -677,6 +707,7 @@ function coerce(raw: unknown): Sheet {
     pollo: coerceFlavor(row.pollo),
     carne: coerceFlavor(row.carne),
     bold: Array.from({ length: BOLD_N }, (_, index) => asDigits(boldIn[index], 7)),
+    consumo: asDigits(row.consumo, 8),
     notas: typeof row.notas === "string" ? row.notas.slice(0, 400) : "",
   };
 }
