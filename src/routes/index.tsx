@@ -9,17 +9,22 @@ import {
   CreditCard,
   Croissant,
   MessageSquareText,
+  Moon,
   Package,
+  Smartphone,
+  Sun,
   Trash2,
   UserRound,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 const PRICE = 3000;
 const HECHA_ROWS = 4;
 const BOLD_ROWS = 11;
 const BOLD_N = BOLD_ROWS * 2;
 const STORAGE_KEY = "control-ventas-v1";
+const THEME_KEY = "control-ventas-theme";
+const HISTORY_KEY = "control-ventas-historial";
 
 const PRODUCTS = [
   { name: "Agua grande", price: 2500 },
@@ -46,6 +51,7 @@ type Flavor = {
 };
 
 type Turno = "" | "manana" | "tarde";
+type ThemeName = "light" | "dark";
 
 type Sheet = {
   fecha: string;
@@ -68,10 +74,15 @@ type FlavorMath = {
   monto: number | null;
 };
 
+type InstallPrompt = Event & {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+};
+
 export const Route = createFileRoute("/")({ component: Home });
 
 function Home() {
-  const sheetRef = useRef<HTMLDivElement>(null);
+  const posterRef = useRef<HTMLDivElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
   const [sheet, setSheet] = useState<Sheet>(blankSheet);
   const [today, setToday] = useState("");
@@ -79,6 +90,16 @@ function Home() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const [askClear, setAskClear] = useState(false);
+  const [theme, setTheme] = useState<ThemeName>("light");
+  const [standalone, setStandalone] = useState(false);
+  const [installEvent, setInstallEvent] = useState<InstallPrompt | null>(null);
+  const [installHelp, setInstallHelp] = useState(false);
+
+  useLayoutEffect(() => {
+    const saved = readTheme();
+    applyTheme(saved);
+    setTheme(saved);
+  }, []);
 
   useEffect(() => {
     const now = todayISO();
@@ -90,11 +111,16 @@ function Home() {
 
   useEffect(() => {
     if (!ready) return;
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(sheet));
-    } catch {
-      /* the sheet still works for this visit */
-    }
+    const save = () => {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(sheet));
+      } catch {
+        /* the sheet still works for this visit */
+      }
+    };
+    save();
+    window.addEventListener("pagehide", save);
+    return () => window.removeEventListener("pagehide", save);
   }, [sheet, ready]);
 
   useEffect(() => {
@@ -104,19 +130,41 @@ function Home() {
   }, [msg]);
 
   useEffect(() => {
-    if (!askClear) return;
+    if (!askClear && !installHelp) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     cancelRef.current?.focus();
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setAskClear(false);
+      if (event.key === "Escape") {
+        setAskClear(false);
+        setInstallHelp(false);
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => {
       document.body.style.overflow = prev;
       window.removeEventListener("keydown", onKey);
     };
-  }, [askClear]);
+  }, [askClear, installHelp]);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(display-mode: standalone)");
+    const sync = () => {
+      const ios = (navigator as Navigator & { standalone?: boolean }).standalone === true;
+      setStandalone(mq.matches || ios);
+    };
+    sync();
+    mq.addEventListener("change", sync);
+    const onPrompt = (event: Event) => {
+      event.preventDefault();
+      setInstallEvent(event as InstallPrompt);
+    };
+    window.addEventListener("beforeinstallprompt", onPrompt);
+    return () => {
+      mq.removeEventListener("change", sync);
+      window.removeEventListener("beforeinstallprompt", onPrompt);
+    };
+  }, []);
 
   const pollo = flavorMath(sheet.pollo);
   const carne = flavorMath(sheet.carne);
@@ -139,28 +187,52 @@ function Home() {
     const next = { ...blankSheet(), fecha: todayISO() };
     setSheet(next);
     setAskClear(false);
-    setMsg("Planilla limpia.");
+    setMsg("Planilla limpia. Lo anterior sigue en este dispositivo.");
+  }
+
+  function toggleTheme() {
+    const next: ThemeName = theme === "dark" ? "light" : "dark";
+    applyTheme(next);
+    setTheme(next);
+  }
+
+  async function onInstall() {
+    if (installEvent) {
+      await installEvent.prompt();
+      setInstallEvent(null);
+      return;
+    }
+    setInstallHelp(true);
   }
 
   async function onCapture() {
-    const node = sheetRef.current;
+    const node = posterRef.current;
     if (!node || busy) return;
     setBusy(true);
     setMsg("");
     try {
+      if (document.fonts?.ready) await document.fonts.ready;
+      const themeNow = readTheme();
+      node.dataset.theme = themeNow;
       const { domToBlob } = await import("modern-screenshot");
       const blob = await domToBlob(node, {
-        backgroundColor: "#fff7f1",
-        scale: 2,
+        backgroundColor: getComputedStyle(node).backgroundColor,
+        scale: 1,
+        width: 1080,
+        height: 1920,
       });
+      rememberCapture(sheet);
       const name = `ventas-${sheet.fecha || todayISO()}-${sheet.turno || "turno"}.png`;
       const file = new File([blob], name, { type: "image/png" });
       const canShare =
         typeof navigator.canShare === "function" && navigator.canShare({ files: [file] });
+      const title = ["Control de ventas", formatFecha(sheet.fecha), sheet.nombre]
+        .filter(Boolean)
+        .join(" · ");
       if (canShare) {
         try {
-          await navigator.share({ files: [file], title: "Control de ventas" });
-          setMsg("Captura lista para compartir.");
+          await navigator.share({ files: [file], title });
+          setMsg("Captura 9:16 lista. Fecha y datos quedaron guardados.");
           return;
         } catch (error) {
           if (error instanceof DOMException && error.name === "AbortError") return;
@@ -172,7 +244,7 @@ function Home() {
       link.download = name;
       link.click();
       URL.revokeObjectURL(url);
-      setMsg("Captura guardada.");
+      setMsg("Captura 9:16 guardada, con fecha y todo lo anotado.");
     } catch {
       setMsg("No se pudo tomar la captura.");
     } finally {
@@ -182,11 +254,27 @@ function Home() {
 
   return (
     <div className="screen">
-      <div className="page" ref={sheetRef}>
+      <div className="page">
         <header className="top">
           <ChartColumn strokeWidth={2.4} aria-hidden="true" />
           <span className="rule" aria-hidden="true" />
           <h1>Control de ventas</h1>
+          <div className="top-actions">
+            {standalone ? null : (
+              <button type="button" className="icon-btn" aria-label="Instalar aplicación" onClick={onInstall}>
+                <Smartphone strokeWidth={2.4} aria-hidden="true" />
+              </button>
+            )}
+            <button
+              type="button"
+              className="icon-btn"
+              aria-label={theme === "dark" ? "Usar tema claro" : "Usar tema oscuro"}
+              onClick={toggleTheme}
+            >
+              <Moon className="icon-moon" strokeWidth={2.4} aria-hidden="true" />
+              <Sun className="icon-sun" strokeWidth={2.4} aria-hidden="true" />
+            </button>
+          </div>
         </header>
 
         <section className="card meta" aria-label="Datos del turno">
@@ -491,6 +579,170 @@ function Home() {
         </section>
       </div>
 
+      <div className="shot-frame" aria-hidden="true">
+        <div className="shot" ref={posterRef} data-theme={theme}>
+          <span className="shot-blob shot-blob-tr" />
+          <span className="shot-blob shot-blob-bl" />
+          <header className="shot-top">
+            <ChartColumn strokeWidth={2.4} />
+            <span className="shot-rule" />
+            <h1>Control de ventas</h1>
+          </header>
+
+          <section className="shot-card shot-meta">
+            <div>
+              <div className="shot-label">
+                <CalendarDays strokeWidth={2.4} /> Fecha
+              </div>
+              <div className="shot-value">{formatFecha(sheet.fecha)}</div>
+            </div>
+            <div>
+              <div className="shot-label">
+                <Coins strokeWidth={2.4} /> Base
+              </div>
+              <div className="shot-value">{sheet.base ? `$ ${group(sheet.base)}` : ""}</div>
+            </div>
+            <div>
+              <div className="shot-label">
+                <UserRound strokeWidth={2.4} /> Nombre
+              </div>
+              <div className="shot-value">{sheet.nombre}</div>
+            </div>
+            <div>
+              <div className="shot-label">
+                <Clock3 strokeWidth={2.4} /> Turno
+              </div>
+              <div className="shot-value">{turnoLabel(sheet.turno)}</div>
+            </div>
+          </section>
+
+          <section className="shot-card">
+            <h2 className="shot-head">
+              <Package strokeWidth={2.4} /> Productos
+            </h2>
+            <div className="shot-cols">
+              <span>Productos</span>
+              <span>Inicio</span>
+              <span>Ingresos</span>
+              <span>Final</span>
+              <span>Total vendido</span>
+              <span>Monto total</span>
+            </div>
+            <div className="shot-prows">
+              {PRODUCTS.map((product, index) => {
+                const row = sheet.products[index] ?? emptyProduct();
+                const math = productMath(row, product.price);
+                return (
+                  <div className="shot-prow" key={product.name}>
+                    <span className="shot-pname">{product.name}</span>
+                    <span className="shot-box">{showDigits(row.inicio)}</span>
+                    <span className="shot-box">{showDigits(row.ingresos)}</span>
+                    <span className="shot-box">{showDigits(row.final)}</span>
+                    <span className="shot-box calc">{math.sold === null ? "" : String(math.sold)}</span>
+                    <span className="shot-box calc">
+                      {math.amount === null ? "" : group(String(math.amount))}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="shot-total">
+              <span>TOTAL PRODUCTOS</span>
+              <strong>{money(productos.amount)}</strong>
+            </div>
+          </section>
+
+          <div className="shot-split">
+            <div className="shot-col">
+              <section className="shot-card shot-empanada">
+                <h2 className="shot-head">
+                  <Croissant strokeWidth={2.4} /> Empanada
+                </h2>
+                <div className="shot-sub">
+                  <span>Pollo</span>
+                  <span>Carne</span>
+                </div>
+                <div className="shot-pad">
+                  <p className="shot-cap">HECHAS</p>
+                  {Array.from({ length: HECHA_ROWS }, (_, row) => (
+                    <div className="shot-pair grow" key={row}>
+                      <span className="shot-box">{showDigits(sheet.pollo.hechas[row] ?? "")}</span>
+                      <span className="shot-box">{showDigits(sheet.carne.hechas[row] ?? "")}</span>
+                    </div>
+                  ))}
+                  <p className="shot-cap">TOTAL HECHAS</p>
+                  <div className="shot-pair">
+                    <span className="shot-box calc">{pollo.hechas}</span>
+                    <span className="shot-box calc">{carne.hechas}</span>
+                  </div>
+                  <p className="shot-cap">SIN VENDER</p>
+                  <div className="shot-pair">
+                    <span className="shot-box">{showDigits(sheet.pollo.quedaron)}</span>
+                    <span className="shot-box">{showDigits(sheet.carne.quedaron)}</span>
+                  </div>
+                  <p className="shot-cap">TOTAL VENDIDO</p>
+                  <div className="shot-pair">
+                    <span className="shot-box calc">{showCount(pollo.sold)}</span>
+                    <span className="shot-box calc">{showCount(carne.sold)}</span>
+                  </div>
+                  <div className="shot-total">
+                    <span>MONTO</span>
+                    <strong>{empanadasListas ? money(empanadasMonto) : "—"}</strong>
+                  </div>
+                </div>
+              </section>
+              <section className="shot-card">
+                <div className="shot-pad">
+                  <div className="shot-label">
+                    <Calculator strokeWidth={2.4} /> Desglose
+                  </div>
+                  <div className="shot-mini">
+                    <span>Consumo</span>
+                    <span className="shot-box">{sheet.consumo ? group(sheet.consumo) : ""}</span>
+                  </div>
+                  <div className="shot-mini">
+                    <span>Venta</span>
+                    <span className="shot-box calc">{empanadasListas ? money(venta) : "—"}</span>
+                  </div>
+                  <div className="shot-mini">
+                    <span>Total</span>
+                    <span className="shot-box calc">{empanadasListas ? money(efectivo) : "—"}</span>
+                  </div>
+                </div>
+              </section>
+            </div>
+
+            <section className="shot-card shot-bold">
+              <h2 className="shot-head">
+                <CreditCard strokeWidth={2.4} /> Forma de pago
+              </h2>
+              <div className="shot-sub solo">
+                <span>Bold</span>
+              </div>
+              <div className="shot-bold-list">
+                {Array.from({ length: BOLD_ROWS }, (_, row) => (
+                  <div className="shot-pair" key={row}>
+                    <span className="shot-box">{showDigits(sheet.bold[row * 2] ?? "")}</span>
+                    <span className="shot-box">{showDigits(sheet.bold[row * 2 + 1] ?? "")}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="shot-total">
+                <span>TOTAL BOLD</span>
+                <strong>{money(boldTotal)}</strong>
+              </div>
+            </section>
+          </div>
+
+          <section className="shot-card shot-notes">
+            <div className="shot-label">
+              <MessageSquareText strokeWidth={2.4} /> Observaciones
+            </div>
+            <p>{sheet.notas}</p>
+          </section>
+        </div>
+      </div>
+
       <div className="actions">
         {msg ? (
           <p className="status" role="status">
@@ -517,18 +769,30 @@ function Home() {
         <div className="modal" role="dialog" aria-modal="true" aria-labelledby="clear-title">
           <div className="modal-card">
             <h2 id="clear-title">Borrar la planilla</h2>
-            <p>Se limpia todo lo anotado en este turno.</p>
+            <p>Se limpia lo anotado en este turno. Las capturas anteriores siguen en este dispositivo.</p>
             <div className="modal-actions">
-              <button
-                type="button"
-                className="ghost"
-                ref={cancelRef}
-                onClick={() => setAskClear(false)}
-              >
+              <button type="button" className="ghost" ref={cancelRef} onClick={() => setAskClear(false)}>
                 Cancelar
               </button>
               <button type="button" className="danger" onClick={clearSheet}>
                 Borrar
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {installHelp ? (
+        <div className="modal" role="dialog" aria-modal="true" aria-labelledby="install-title">
+          <div className="modal-card">
+            <h2 id="install-title">Instalar la app</h2>
+            <p>
+              En el menú del navegador elige Instalar app o Agregar a la pantalla de inicio. En iPhone:
+              Compartir, luego Agregar a inicio. Después abre sin conexión.
+            </p>
+            <div className="modal-actions">
+              <button type="button" className="danger" ref={cancelRef} onClick={() => setInstallHelp(false)}>
+                Listo
               </button>
             </div>
           </div>
@@ -605,6 +869,22 @@ function todayISO(date = new Date()): string {
   return `${y}-${m}-${d}`;
 }
 
+function formatFecha(iso: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return "";
+  const [year, month, day] = iso.split("-");
+  return `${day}/${month}/${year}`;
+}
+
+function turnoLabel(turno: Turno): string {
+  if (turno === "manana") return "Mañana";
+  if (turno === "tarde") return "Tarde";
+  return "";
+}
+
+function showDigits(value: string): string {
+  return value ? group(value) : "";
+}
+
 function digits(raw: string, max: number): string {
   return raw
     .replace(/\D/g, "")
@@ -671,6 +951,37 @@ function flavorReady(flavor: FlavorMath): boolean {
 
 function showCount(value: number | null): string {
   return value === null ? "—" : String(value);
+}
+
+function readTheme(): ThemeName {
+  try {
+    return localStorage.getItem(THEME_KEY) === "dark" ? "dark" : "light";
+  } catch {
+    return "light";
+  }
+}
+
+function applyTheme(theme: ThemeName) {
+  document.documentElement.dataset.theme = theme;
+  try {
+    localStorage.setItem(THEME_KEY, theme);
+  } catch {
+    /* theme still applies this visit */
+  }
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute("content", theme === "dark" ? "#1c1410" : "#fff7f1");
+}
+
+function rememberCapture(sheet: Sheet) {
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    const prev = raw ? (JSON.parse(raw) as unknown) : [];
+    const list = Array.isArray(prev) ? prev : [];
+    list.unshift({ at: new Date().toISOString(), sheet });
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(list.slice(0, 40)));
+  } catch {
+    /* current sheet is already stored */
+  }
 }
 
 function coerceFlavor(value: unknown): Flavor {
