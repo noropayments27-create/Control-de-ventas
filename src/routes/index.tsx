@@ -17,29 +17,27 @@ import { useEffect, useRef, useState } from "react";
 
 const PRICE = 3000;
 const HECHA_ROWS = 4;
-const BOLD_ROWS = 6;
+const BOLD_ROWS = 11;
 const BOLD_N = BOLD_ROWS * 2;
 const STORAGE_KEY = "control-ventas-v1";
 
 const PRODUCTS = [
-  "Agua grande",
-  "Agua pequeña",
-  "Gaseosa 400ml",
-  "Hit 500ml",
-  "Gaseosa 250ml",
-  "Pony 350ml",
-  "Pony mini",
-  "Agua Gas",
-  "Agua Gas pequeña",
-  "Huevos",
+  { name: "Agua grande", price: 2500 },
+  { name: "Agua pequeña", price: 1000 },
+  { name: "Gaseosa 400ml", price: 3500 },
+  { name: "Hit 500ml", price: 3500 },
+  { name: "Gaseosa 240ml", price: 2500 },
+  { name: "Pony Malta 350ml", price: 3000 },
+  { name: "Pony mini", price: 2000 },
+  { name: "Agua con gas", price: 2500 },
+  { name: "Agua con gas pequeña", price: 1500 },
+  { name: "Huevos", price: 4000 },
 ] as const;
 
 type ProductRow = {
   inicio: string;
   ingresos: string;
   final: string;
-  vendido: string;
-  monto: string;
 };
 
 type Flavor = {
@@ -264,41 +262,40 @@ function Home() {
             <span>Monto total</span>
           </div>
           <div className="prod-body">
-            {PRODUCTS.map((name, index) => {
+            {PRODUCTS.map((product, index) => {
               const row = sheet.products[index] ?? emptyProduct();
+              const math = productMath(row, product.price);
               return (
-                <div className="prod-row" key={name}>
-                  <span className="prod-name">{name}</span>
+                <div className="prod-row" key={product.name}>
+                  <span className="prod-name">{product.name}</span>
                   <DigitsInput
-                    label={`${name} inicio`}
+                    label={`${product.name} inicio`}
                     value={row.inicio}
                     max={4}
                     onChange={(value) => patchProduct(index, "inicio", value)}
                   />
                   <DigitsInput
-                    label={`${name} ingresos`}
+                    label={`${product.name} ingresos`}
                     value={row.ingresos}
                     max={4}
                     onChange={(value) => patchProduct(index, "ingresos", value)}
                   />
                   <DigitsInput
-                    label={`${name} final`}
+                    label={`${product.name} final`}
                     value={row.final}
                     max={4}
+                    className={math.over ? "cell warn" : "cell"}
                     onChange={(value) => patchProduct(index, "final", value)}
                   />
-                  <DigitsInput
-                    label={`${name} total vendido`}
-                    value={row.vendido}
-                    max={4}
-                    onChange={(value) => patchProduct(index, "vendido", value)}
-                  />
-                  <DigitsInput
-                    label={`${name} monto total en pesos`}
-                    value={row.monto}
-                    max={7}
-                    onChange={(value) => patchProduct(index, "monto", value)}
-                  />
+                  <div
+                    className={math.over ? "cell calc warn" : "cell calc"}
+                    aria-label={`${product.name} total vendido`}
+                  >
+                    {math.sold === null ? "" : String(math.sold)}
+                  </div>
+                  <div className="cell calc" aria-label={`${product.name} monto total`}>
+                    {math.amount === null ? "" : group(String(math.amount))}
+                  </div>
                 </div>
               );
             })}
@@ -562,7 +559,7 @@ function Stat({ label, value, warn = false }: { label: string; value: string; wa
 }
 
 function emptyProduct(): ProductRow {
-  return { inicio: "", ingresos: "", final: "", vendido: "", monto: "" };
+  return { inicio: "", ingresos: "", final: "" };
 }
 
 function emptyFlavor(): Flavor {
@@ -618,6 +615,16 @@ function money(value: number): string {
   return moneyFmt.format(value);
 }
 
+function productMath(row: ProductRow, price: number) {
+  const ready = row.inicio !== "" && row.final !== "";
+  if (!ready) return { sold: null as number | null, amount: null as number | null, over: false };
+  const stock = toInt(row.inicio) + toInt(row.ingresos);
+  const left = toInt(row.final);
+  const over = left > stock;
+  const sold = Math.max(0, stock - left);
+  return { sold, amount: sold * price, over };
+}
+
 function flavorMath(flavor: Flavor): FlavorMath {
   const hechas = flavor.hechas.reduce((sum, value) => sum + toInt(value), 0);
   const closed = flavor.quedaron !== "";
@@ -665,8 +672,6 @@ function coerce(raw: unknown): Sheet {
         inicio: asDigits(product.inicio, 4),
         ingresos: asDigits(product.ingresos, 4),
         final: asDigits(product.final, 4),
-        vendido: asDigits(product.vendido, 4),
-        monto: asDigits(product.monto, 7),
       };
     }),
     pollo: coerceFlavor(row.pollo),

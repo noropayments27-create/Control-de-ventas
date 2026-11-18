@@ -355,8 +355,18 @@ input[type="date"] {
   flex-direction: column;
 }
 
+.cell.calc {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff4ea;
+  color: #9a3412;
+  pointer-events: none;
+}
+
 .pago .pad {
   flex: 1;
+  justify-content: flex-start;
 }
 
 .pago .total-bar {
