@@ -282,11 +282,11 @@ function Home() {
     <div className="screen">
       <div className="page">
         <header className="top">
+          <UserButton />
           <ChartColumn strokeWidth={2.4} aria-hidden="true" />
           <span className="rule" aria-hidden="true" />
           <h1>Control de ventas</h1>
           <div className="top-actions">
-            <UserButton />
             {standalone ? null : (
               <button type="button" className="icon-btn" aria-label="Instalar aplicación" onClick={onInstall}>
                 <Smartphone strokeWidth={2.4} aria-hidden="true" />
