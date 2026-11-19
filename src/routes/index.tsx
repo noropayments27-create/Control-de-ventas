@@ -764,25 +764,6 @@ function Home() {
                   ) : null}
                 </div>
               </section>
-              <section className="shot-card">
-                <div className="shot-pad">
-                  <div className="shot-label">
-                    <Calculator strokeWidth={2.4} /> Desglose
-                  </div>
-                  <div className="shot-mini">
-                    <span>Consumo</span>
-                    <span className="shot-box">{sheet.consumo ? group(sheet.consumo) : ""}</span>
-                  </div>
-                  <div className="shot-mini">
-                    <span>Venta</span>
-                    <span className="shot-box calc">{empanadasListas ? money(venta) : "—"}</span>
-                  </div>
-                  <div className="shot-mini">
-                    <span>Total efectivo</span>
-                    <span className="shot-box calc">{empanadasListas ? money(efectivo) : "—"}</span>
-                  </div>
-                </div>
-              </section>
             </div>
 
             <section className="shot-card shot-bold">
@@ -810,6 +791,24 @@ function Home() {
               </div>
             </section>
           </div>
+
+          <section className="shot-card shot-desglose">
+            <div className="shot-label">
+              <Calculator strokeWidth={2.4} /> Desglose
+            </div>
+            <div className="shot-mini">
+              <span>Consumo</span>
+              <span className="shot-box">{sheet.consumo ? group(sheet.consumo) : ""}</span>
+            </div>
+            <div className="shot-mini">
+              <span>Venta</span>
+              <span className="shot-box calc">{empanadasListas ? money(venta) : "—"}</span>
+            </div>
+            <div className="shot-mini">
+              <span>Total efectivo</span>
+              <span className="shot-box calc">{empanadasListas ? money(efectivo) : "—"}</span>
+            </div>
+          </section>
 
           <section className="shot-card shot-notes">
             <div className="shot-label">
