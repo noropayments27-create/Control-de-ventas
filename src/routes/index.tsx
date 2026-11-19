@@ -441,13 +441,12 @@ function Home() {
                   />
                 </div>
               ))}
+              <p className="caption">TOTAL HECHAS</p>
               <div className="pair">
                 <div className="sum-mini" aria-label={`Total hechas de pollo ${pollo.hechas}`}>
-                  <small>TOTAL</small>
                   {pollo.hechas}
                 </div>
                 <div className="sum-mini" aria-label={`Total hechas de carne ${carne.hechas}`}>
-                  <small>TOTAL</small>
                   {carne.hechas}
                 </div>
               </div>
@@ -665,7 +664,7 @@ function Home() {
                 <div className="shot-pad">
                   <p className="shot-cap">HECHAS</p>
                   {Array.from({ length: HECHA_ROWS }, (_, row) => (
-                    <div className="shot-pair grow" key={row}>
+                    <div className="shot-pair hecho-row" key={row}>
                       <span className="shot-box">{showDigits(sheet.pollo.hechas[row] ?? "")}</span>
                       <span className="shot-box">{showDigits(sheet.carne.hechas[row] ?? "")}</span>
                     </div>
@@ -686,7 +685,7 @@ function Home() {
                     <span className="shot-box calc">{showCount(carne.sold)}</span>
                   </div>
                   <div className="shot-total">
-                    <span>MONTO</span>
+                    <span>MONTO TOTAL</span>
                     <strong>{empanadasListas ? money(empanadasMonto) : "—"}</strong>
                   </div>
                 </div>
@@ -705,7 +704,7 @@ function Home() {
                     <span className="shot-box calc">{empanadasListas ? money(venta) : "—"}</span>
                   </div>
                   <div className="shot-mini">
-                    <span>Total</span>
+                    <span>Total efectivo</span>
                     <span className="shot-box calc">{empanadasListas ? money(efectivo) : "—"}</span>
                   </div>
                 </div>

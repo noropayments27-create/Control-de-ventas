@@ -1,4 +1,4 @@
-const CACHE = "control-ventas-v3";
+const CACHE = "control-ventas-v4";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(self.skipWaiting());

@@ -25,6 +25,7 @@ test("injects before </head>", () => {
   const out = injectGrokPwaHead("<html><head><title>x</title></head><body></body></html>");
   assert.match(out, /rel="manifest"/);
   assert.match(out, /apple-touch-icon/);
+  assert.match(out, /\/app-icons\/app-icon-180\.png/);
   assert.match(out, /grok-app-builder\/extensions\.js/);
   assert.ok(out.indexOf("manifest") < out.indexOf("</head>"));
 });
@@ -512,7 +513,16 @@ test("renders the manifest with the per-app name", () => {
   const manifest = JSON.parse(renderWebManifest("wild-race.grok.me"));
   assert.equal(manifest.name, "Wild Race");
   assert.equal(manifest.short_name, "Wild Race");
-  assert.equal(manifest.icons[0].src, "/__grok/icon-180.png");
+  assert.deepEqual(
+    manifest.icons.map(({ src, sizes, purpose }) => ({ src, sizes, purpose })),
+    [
+      { src: "/app-icons/app-icon-192.png", sizes: "192x192", purpose: "any" },
+      { src: "/app-icons/app-icon-512.png", sizes: "512x512", purpose: "any" },
+      { src: "/app-icons/app-icon-512-maskable.png", sizes: "512x512", purpose: "maskable" },
+    ],
+  );
+  assert.equal(manifest.background_color, "#fff7f1");
+  assert.equal(manifest.theme_color, "#f97316");
 });
 
 // Tripwires: the deployed-app path only works if Nitro scans server/ — an

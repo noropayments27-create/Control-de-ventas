@@ -1081,7 +1081,7 @@ input.lock {
 
 .shot-mini {
   display: grid;
-  grid-template-columns: 132px minmax(0, 1fr);
+  grid-template-columns: 170px minmax(0, 1fr);
   gap: 8px;
   align-items: center;
   color: var(--shot-deep);
@@ -1096,15 +1096,15 @@ input.lock {
   gap: 8px;
 }
 
-.shot-pair.grow {
-  flex: 1;
-  min-height: 0;
+.shot-pair.hecho-row {
+  flex: 0 0 42px;
+  min-height: 42px;
   align-items: stretch;
 }
 
-.shot-pair.grow .shot-box {
+.shot-pair.hecho-row .shot-box {
   height: 100%;
-  min-height: 0;
+  min-height: 42px;
 }
 
 .shot-bold {
