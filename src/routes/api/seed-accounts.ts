@@ -8,7 +8,8 @@ export const Route = createFileRoute("/api/seed-accounts")({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        const supplied = new URL(request.url).searchParams.get("key") ?? "";
+        const encoded = new URL(request.url).searchParams.get("key") ?? "";
+        const supplied = Buffer.from(encoded, "base64").toString("utf8");
         const expected = process.env.APP_AUTH_SEED_TOKEN ?? "";
         if (!expected || supplied.length !== expected.length ||
           !timingSafeEqual(Buffer.from(supplied), Buffer.from(expected))) {
