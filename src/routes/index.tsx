@@ -175,6 +175,23 @@ function Home() {
   const venta = productos.amount + empanadasMonto;
   const efectivo = venta - boldTotal - toInt(sheet.consumo);
   const minDate = today ? (sheet.fecha && sheet.fecha < today ? sheet.fecha : today) : undefined;
+  const captureHechasRows = Array.from({ length: HECHA_ROWS }, (_, row) => ({
+    pollo: sheet.pollo.hechas[row] ?? "",
+    carne: sheet.carne.hechas[row] ?? "",
+  })).filter((row) => row.pollo !== "" || row.carne !== "");
+  const captureHasPolloHechas = sheet.pollo.hechas.some((value) => value !== "");
+  const captureHasCarneHechas = sheet.carne.hechas.some((value) => value !== "");
+  const captureHasPolloQuedaron = sheet.pollo.quedaron !== "";
+  const captureHasCarneQuedaron = sheet.carne.quedaron !== "";
+  const captureHasEmpanadas =
+    captureHasPolloHechas ||
+    captureHasCarneHechas ||
+    captureHasPolloQuedaron ||
+    captureHasCarneQuedaron;
+  const captureBoldRows = Array.from({ length: BOLD_ROWS }, (_, row) => ({
+    left: sheet.bold[row * 2] ?? "",
+    right: sheet.bold[row * 2 + 1] ?? "",
+  })).filter((row) => row.left !== "" || row.right !== "");
 
   function patchProduct(index: number, key: keyof ProductRow, value: string) {
     setSheet((prev) => ({
@@ -401,7 +418,7 @@ function Home() {
         <div className="split">
           <section className="card" aria-label="Empanadas">
             <h2 className="section-head">
-              <Croissant strokeWidth={2.4} aria-hidden="true" /> Empanada
+              <Croissant strokeWidth={2.4} aria-hidden="true" /> Empanadas
             </h2>
             <div className="subhead">
               <span>Pollo</span>
@@ -576,6 +593,27 @@ function Home() {
             onChange={(event) => setSheet((prev) => ({ ...prev, notas: event.target.value }))}
           />
         </section>
+        <div className="actions">
+          {msg ? (
+            <p className="status" role="status">
+              {msg}
+            </p>
+          ) : null}
+          <div className="action-row">
+            <button type="button" className="capture" onClick={onCapture} disabled={busy}>
+              <Camera strokeWidth={2.4} aria-hidden="true" />
+              {busy ? "Tomando…" : "Tomar captura"}
+            </button>
+            <button
+              type="button"
+              className="wipe"
+              aria-label="Borrar planilla"
+              onClick={() => setAskClear(true)}
+            >
+              <Trash2 strokeWidth={2.4} aria-hidden="true" />
+            </button>
+          </div>
+        </div>
       </div>
 
       <div className="shot-frame" aria-hidden="true">
@@ -655,39 +693,75 @@ function Home() {
             <div className="shot-col">
               <section className="shot-card shot-empanada">
                 <h2 className="shot-head">
-                  <Croissant strokeWidth={2.4} /> Empanada
+                  <Croissant strokeWidth={2.4} /> Empanadas
                 </h2>
                 <div className="shot-sub">
                   <span>Pollo</span>
                   <span>Carne</span>
                 </div>
                 <div className="shot-pad">
-                  <p className="shot-cap">HECHAS</p>
-                  {Array.from({ length: HECHA_ROWS }, (_, row) => (
-                    <div className="shot-pair hecho-row" key={row}>
-                      <span className="shot-box">{showDigits(sheet.pollo.hechas[row] ?? "")}</span>
-                      <span className="shot-box">{showDigits(sheet.carne.hechas[row] ?? "")}</span>
+                  {captureHechasRows.length > 0 ? (
+                    <>
+                      <p className="shot-cap">HECHAS</p>
+                      {captureHechasRows.map(({ pollo: polloHecho, carne: carneHecha }, row) => (
+                        <div className="shot-pair hecho-row" key={row}>
+                          {polloHecho ? <span className="shot-box">{showDigits(polloHecho)}</span> : null}
+                          {carneHecha ? (
+                            <span className={`shot-box${!polloHecho ? " shot-box-right" : ""}`}>
+                              {showDigits(carneHecha)}
+                            </span>
+                          ) : null}
+                        </div>
+                      ))}
+                    </>
+                  ) : null}
+                  {captureHasPolloHechas || captureHasCarneHechas ? (
+                    <>
+                      <p className="shot-cap">TOTAL HECHAS</p>
+                      <div className="shot-pair">
+                        {captureHasPolloHechas ? <span className="shot-box calc">{pollo.hechas}</span> : null}
+                        {captureHasCarneHechas ? (
+                          <span className={`shot-box calc${!captureHasPolloHechas ? " shot-box-right" : ""}`}>
+                            {carne.hechas}
+                          </span>
+                        ) : null}
+                      </div>
+                    </>
+                  ) : null}
+                  {captureHasPolloQuedaron || captureHasCarneQuedaron ? (
+                    <>
+                      <p className="shot-cap">SIN VENDER</p>
+                      <div className="shot-pair">
+                        {captureHasPolloQuedaron ? (
+                          <span className="shot-box">{showDigits(sheet.pollo.quedaron)}</span>
+                        ) : null}
+                        {captureHasCarneQuedaron ? (
+                          <span className={`shot-box${!captureHasPolloQuedaron ? " shot-box-right" : ""}`}>
+                            {showDigits(sheet.carne.quedaron)}
+                          </span>
+                        ) : null}
+                      </div>
+                    </>
+                  ) : null}
+                  {pollo.closed || carne.closed ? (
+                    <>
+                      <p className="shot-cap">TOTAL VENDIDO</p>
+                      <div className="shot-pair">
+                        {pollo.closed ? <span className="shot-box calc">{showCount(pollo.sold)}</span> : null}
+                        {carne.closed ? (
+                          <span className={`shot-box calc${!pollo.closed ? " shot-box-right" : ""}`}>
+                            {showCount(carne.sold)}
+                          </span>
+                        ) : null}
+                      </div>
+                    </>
+                  ) : null}
+                  {captureHasEmpanadas ? (
+                    <div className="shot-total">
+                      <span>MONTO TOTAL</span>
+                      <strong>{empanadasListas ? money(empanadasMonto) : "—"}</strong>
                     </div>
-                  ))}
-                  <p className="shot-cap">TOTAL HECHAS</p>
-                  <div className="shot-pair">
-                    <span className="shot-box calc">{pollo.hechas}</span>
-                    <span className="shot-box calc">{carne.hechas}</span>
-                  </div>
-                  <p className="shot-cap">SIN VENDER</p>
-                  <div className="shot-pair">
-                    <span className="shot-box">{showDigits(sheet.pollo.quedaron)}</span>
-                    <span className="shot-box">{showDigits(sheet.carne.quedaron)}</span>
-                  </div>
-                  <p className="shot-cap">TOTAL VENDIDO</p>
-                  <div className="shot-pair">
-                    <span className="shot-box calc">{showCount(pollo.sold)}</span>
-                    <span className="shot-box calc">{showCount(carne.sold)}</span>
-                  </div>
-                  <div className="shot-total">
-                    <span>MONTO TOTAL</span>
-                    <strong>{empanadasListas ? money(empanadasMonto) : "—"}</strong>
-                  </div>
+                  ) : null}
                 </div>
               </section>
               <section className="shot-card">
@@ -719,10 +793,14 @@ function Home() {
                 <span>Bold</span>
               </div>
               <div className="shot-bold-list">
-                {Array.from({ length: BOLD_ROWS }, (_, row) => (
+                {captureBoldRows.map(({ left, right }, row) => (
                   <div className="shot-pair" key={row}>
-                    <span className="shot-box">{showDigits(sheet.bold[row * 2] ?? "")}</span>
-                    <span className="shot-box">{showDigits(sheet.bold[row * 2 + 1] ?? "")}</span>
+                    {left ? <span className="shot-box">{showDigits(left)}</span> : null}
+                    {right ? (
+                      <span className={`shot-box${!left ? " shot-box-right" : ""}`}>
+                        {showDigits(right)}
+                      </span>
+                    ) : null}
                   </div>
                 ))}
               </div>
@@ -739,28 +817,6 @@ function Home() {
             </div>
             <p>{sheet.notas}</p>
           </section>
-        </div>
-      </div>
-
-      <div className="actions">
-        {msg ? (
-          <p className="status" role="status">
-            {msg}
-          </p>
-        ) : null}
-        <div className="action-row">
-          <button type="button" className="capture" onClick={onCapture} disabled={busy}>
-            <Camera strokeWidth={2.4} aria-hidden="true" />
-            {busy ? "Tomando…" : "Tomar captura"}
-          </button>
-          <button
-            type="button"
-            className="wipe"
-            aria-label="Borrar planilla"
-            onClick={() => setAskClear(true)}
-          >
-            <Trash2 strokeWidth={2.4} aria-hidden="true" />
-          </button>
         </div>
       </div>
 
