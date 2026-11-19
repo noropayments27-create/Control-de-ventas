@@ -1,4 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Navigate } from "@tanstack/react-router";
+import { UserButton } from "@/lib/auth/gates";
+import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import {
   Calculator,
   CalendarDays,
@@ -79,7 +81,14 @@ type InstallPrompt = Event & {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 };
 
-export const Route = createFileRoute("/")({ component: Home });
+export const Route = createFileRoute("/")({ component: HomeGate });
+
+function HomeGate() {
+  const { user, isPending } = useCurrentUserState();
+  if (isPending) return <main className="auth-loading" aria-label="Cargando sesión" />;
+  if (!user) return <Navigate to="/login" />;
+  return <Home />;
+}
 
 function Home() {
   const posterRef = useRef<HTMLDivElement>(null);
@@ -277,6 +286,7 @@ function Home() {
           <span className="rule" aria-hidden="true" />
           <h1>Control de ventas</h1>
           <div className="top-actions">
+            <UserButton />
             {standalone ? null : (
               <button type="button" className="icon-btn" aria-label="Instalar aplicación" onClick={onInstall}>
                 <Smartphone strokeWidth={2.4} aria-hidden="true" />
