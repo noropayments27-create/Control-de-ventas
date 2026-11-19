@@ -52,7 +52,7 @@ type Flavor = {
   quedaron: string;
 };
 
-type Turno = "" | "manana" | "tarde";
+type Turno = "" | "manana" | "tarde" | "completo";
 type ThemeName = "light" | "dark";
 
 type Sheet = {
@@ -364,6 +364,7 @@ function Home() {
               <option value="">Elegir</option>
               <option value="manana">Mañana</option>
               <option value="tarde">Tarde</option>
+              <option value="completo">Completo</option>
             </select>
           </label>
         </section>
@@ -942,6 +943,7 @@ function formatFecha(iso: string): string {
 function turnoLabel(turno: Turno): string {
   if (turno === "manana") return "Mañana";
   if (turno === "tarde") return "Tarde";
+  if (turno === "completo") return "Completo";
   return "";
 }
 
@@ -1063,7 +1065,7 @@ function coerce(raw: unknown): Sheet {
   const row = raw as Record<string, unknown>;
   const productsIn = Array.isArray(row.products) ? row.products : [];
   const boldIn = Array.isArray(row.bold) ? row.bold : [];
-  const turno: Turno = row.turno === "manana" || row.turno === "tarde" ? row.turno : "";
+  const turno: Turno = row.turno === "manana" || row.turno === "tarde" || row.turno === "completo" ? row.turno : "";
   return {
     fecha: typeof row.fecha === "string" && /^\d{4}-\d{2}-\d{2}$/.test(row.fecha) ? row.fecha : "",
     base: asDigits(row.base, 8),
