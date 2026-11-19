@@ -517,8 +517,8 @@ test("renders the manifest with the per-app name", () => {
     manifest.icons.map(({ src, sizes, purpose }) => ({ src, sizes, purpose })),
     [
       { src: "/app-icons/app-icon-192.png", sizes: "192x192", purpose: "any" },
-      { src: "/app-icons/app-icon-512.png", sizes: "512x512", purpose: "any" },
-      { src: "/app-icons/app-icon-512-maskable.png", sizes: "512x512", purpose: "maskable" },
+      { src: "/app-icons/app-icon.svg", sizes: "any", purpose: "any" },
+      { src: "/app-icons/app-icon-maskable.svg", sizes: "any", purpose: "maskable" },
     ],
   );
   assert.equal(manifest.background_color, "#fff7f1");

@@ -177,15 +177,15 @@ export function renderWebManifest(hostHeader) {
           purpose: "any",
         },
         {
-          src: "/app-icons/app-icon-512.png",
-          sizes: "512x512",
-          type: "image/png",
+          src: "/app-icons/app-icon.svg",
+          sizes: "any",
+          type: "image/svg+xml",
           purpose: "any",
         },
         {
-          src: "/app-icons/app-icon-512-maskable.png",
-          sizes: "512x512",
-          type: "image/png",
+          src: "/app-icons/app-icon-maskable.svg",
+          sizes: "any",
+          type: "image/svg+xml",
           purpose: "maskable",
         },
       ],
@@ -200,7 +200,7 @@ export function grokPwaHeadTags(appName = DEFAULT_APP_NAME) {
     // Standalone display comes from the manifest ("display": "standalone");
     // the legacy *-web-app-capable metas it replaces are deliberately absent.
     ["manifest", '<link rel="manifest" href="/__grok/manifest.webmanifest">'],
-    ["apple-touch-icon", '<link rel="apple-touch-icon" href="/app-icons/app-icon-180.png">'],
+    ["apple-touch-icon", '<link rel="apple-touch-icon" href="/app-icons/app-icon-192.png">'],
     [
       "apple-mobile-web-app-title",
       `<meta name="apple-mobile-web-app-title" content="${escapeHtml(appName)}">`,
