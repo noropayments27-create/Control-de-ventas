@@ -1,4 +1,5 @@
 import { useState, useSyncExternalStore, type ReactNode } from "react";
+import { LogOut, Menu, X } from "lucide-react";
 import { Navigate } from "@tanstack/react-router";
 import { GROK_PROVIDERS, authEnabled, signIn, signOut } from "./client";
 import { hasGateSessionMarker } from "./gate-session-marker";
@@ -89,8 +90,7 @@ export function SignInButtons() {
  */
 export function UserButton() {
   const user = useCurrentUser();
-  // Sign-out can take a moment (and can fail when deployed), so the control
-  // shows it is working and cannot be fired twice.
+  const [open, setOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const gateSession = useSyncExternalStore(
     subscribeToNothing,
@@ -98,35 +98,49 @@ export function UserButton() {
     noGateSessionOnServer,
   );
   if (!user) return null;
-  const label = user.displayName ?? user.primaryEmail ?? "Account";
+  const label = user.displayName ?? user.primaryEmail ?? "Cuenta";
   return (
-    <div className="flex items-center gap-2">
-      {user.profileImageUrl ? (
-        <img
-          src={user.profileImageUrl}
-          alt=""
-          className="h-8 w-8 rounded-full object-cover"
-        />
-      ) : (
-        <span className="grid h-8 w-8 place-items-center rounded-full bg-black/10 text-sm font-medium dark:bg-white/20">
-          {label.charAt(0).toUpperCase()}
-        </span>
-      )}
-      <span className="text-sm font-medium">{label}</span>
-      {authEnabled && !gateSession && (
-        <button
-          type="button"
-          disabled={signingOut}
-          onClick={() => {
-            setSigningOut(true);
-            // Success navigates away; on failure re-enable so it can be retried.
-            void signOut().catch(() => setSigningOut(false));
-          }}
-          className="cursor-pointer text-sm underline-offset-4 opacity-70 hover:underline disabled:cursor-wait disabled:no-underline"
-        >
-          {signingOut ? "Signing out…" : "Sign out"}
-        </button>
-      )}
+    <div className="account-menu-wrap">
+      <button
+        type="button"
+        className="account-menu-trigger"
+        aria-label={open ? "Cerrar menú de cuenta" : "Abrir menú de cuenta"}
+        aria-expanded={open}
+        aria-haspopup="menu"
+        onClick={() => setOpen((value) => !value)}
+      >
+        {open ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}
+      </button>
+      {open ? (
+        <div className="account-menu-panel" role="menu">
+          <div className="account-menu-identity">
+            {user.profileImageUrl ? (
+              <img src={user.profileImageUrl} alt="" />
+            ) : (
+              <span className="account-menu-avatar">{label.charAt(0).toUpperCase()}</span>
+            )}
+            <div className="account-menu-details">
+              <strong>{label}</strong>
+              {user.primaryEmail ? <span>{user.primaryEmail}</span> : null}
+            </div>
+          </div>
+          {authEnabled && !gateSession ? (
+            <button
+              type="button"
+              role="menuitem"
+              className="account-menu-signout"
+              disabled={signingOut}
+              onClick={() => {
+                setSigningOut(true);
+                void signOut().catch(() => setSigningOut(false));
+              }}
+            >
+              <LogOut aria-hidden="true" />
+              {signingOut ? "Cerrando sesión…" : "Cerrar sesión"}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }
