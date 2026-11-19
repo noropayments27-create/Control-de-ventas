@@ -25,7 +25,7 @@ test("injects before </head>", () => {
   const out = injectGrokPwaHead("<html><head><title>x</title></head><body></body></html>");
   assert.match(out, /rel="manifest"/);
   assert.match(out, /apple-touch-icon/);
-  assert.match(out, /\/app-icons\/app-icon-180\.png/);
+  assert.match(out, /\/app-icons\/app-icon-192\.png/);
   assert.match(out, /grok-app-builder\/extensions\.js/);
   assert.ok(out.indexOf("manifest") < out.indexOf("</head>"));
 });
